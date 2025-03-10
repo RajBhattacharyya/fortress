@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 
 class UploadImageScreen extends StatefulWidget {
   const UploadImageScreen({super.key});
@@ -70,12 +72,18 @@ class _UploadImageScreenState extends State<UploadImageScreen> {
     }
 
     String name = _nameController.text.trim();
-    String fileName = '$name.jpg';
 
     try {
-      final storageReference =
-          FirebaseStorage.instance.ref().child('users/$fileName');
-      await storageReference.putFile(_image!);
+      // Convert image to base64
+      List<int> imageBytes = await _image!.readAsBytes();
+      String base64Image = base64Encode(imageBytes);
+
+      // Store map of name and base64 image in Firestore
+      await FirebaseFirestore.instance.collection('Images').doc('users').set({
+        'base64': FieldValue.arrayUnion([
+          {name: base64Image}
+        ])
+      }, SetOptions(merge: true));
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Image uploaded successfully!')),

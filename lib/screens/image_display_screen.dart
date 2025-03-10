@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -13,7 +15,7 @@ class ImageDisplayScreen extends StatefulWidget {
 class _ImageDisplayScreenState extends State<ImageDisplayScreen> {
   final DatabaseReference _databaseRef =
       FirebaseDatabase.instance.ref().child('image');
-  String? _imageUrl;
+  String? _image64;
 
   @override
   void initState() {
@@ -25,26 +27,38 @@ class _ImageDisplayScreenState extends State<ImageDisplayScreen> {
     _databaseRef.onValue.listen((event) {
       final data = event.snapshot.value as String?;
       setState(() {
-        _imageUrl = data?.isNotEmpty == true ? data : null;
+        _image64 = data?.isNotEmpty == true ? data : null;
       });
     });
   }
 
   void _makeSOSCall() async {
-  if (await Permission.phone.request().isGranted) {
-    final Uri phoneUri = Uri(scheme: 'tel', path: '100');
-    if (await canLaunchUrl(phoneUri)) {
-      await launchUrl(phoneUri, mode: LaunchMode.externalApplication);
+    if (await Permission.phone.request().isGranted) {
+      final Uri phoneUri = Uri(scheme: 'tel', path: '100');
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(phoneUri, mode: LaunchMode.externalApplication);
+      } else {
+        throw 'Could not launch $phoneUri';
+      }
     } else {
-      throw 'Could not launch $phoneUri';
+      throw 'Phone permission not granted';
     }
-  } else {
-    throw 'Phone permission not granted';
   }
-}
+
+  Uint8List? _getDecodedImage() {
+    if (_image64 == null) return null;
+    try {
+      return base64Decode(_image64!);
+    } catch (e) {
+      debugPrint('Error decoding base64 image: $e');
+      return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final decodedImage = _getDecodedImage();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -67,7 +81,7 @@ class _ImageDisplayScreenState extends State<ImageDisplayScreen> {
             Container(
               padding: const EdgeInsets.all(16.0),
               decoration: BoxDecoration(
-                color: _imageUrl == null
+                color: _image64 == null
                     ? Colors.green.withOpacity(0.7)
                     : Colors.red.withOpacity(0.7),
                 borderRadius: BorderRadius.circular(12.0),
@@ -82,9 +96,7 @@ class _ImageDisplayScreenState extends State<ImageDisplayScreen> {
                 ],
               ),
               child: Text(
-                _imageUrl == null
-                    ? 'No Intruder Detected'
-                    : 'Intruder Detected',
+                _image64 == null ? 'No Intruder Detected' : 'Intruder Detected',
                 style: const TextStyle(
                   fontSize: 22.0,
                   color: Colors.white,
@@ -94,7 +106,7 @@ class _ImageDisplayScreenState extends State<ImageDisplayScreen> {
             ),
             const SizedBox(height: 20),
             Center(
-              child: _imageUrl == null
+              child: _image64 == null
                   ? const SizedBox.shrink()
                   : SizedBox(
                       height: 300,
@@ -107,16 +119,23 @@ class _ImageDisplayScreenState extends State<ImageDisplayScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            _imageUrl!,
-                            fit: BoxFit.cover,
-                          ),
+                          child: decodedImage == null
+                              ? const Center(
+                                  child: Text(
+                                    'Failed to Load Image',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                )
+                              : Image.memory(
+                                  decodedImage,
+                                  fit: BoxFit.cover,
+                                ),
                         ),
                       ),
                     ),
             ),
             const SizedBox(height: 50),
-            _imageUrl != null
+            _image64 != null
                 ? ElevatedButton(
                     onPressed: _makeSOSCall,
                     style: ElevatedButton.styleFrom(

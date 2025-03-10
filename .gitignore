@@ -30,6 +30,10 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+flutter_*.png
+
+# Firebase related
+firebase_app_id_file.json
 
 # Symbolication related
 app.*.symbols
@@ -41,3 +45,25 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Miscellaneous
+*.tmp
+
+# IDEs and editors
+.vscode/
+
+# Visual Studio user-specific files.
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio build-related files.
+x64/
+x86/
+
+# Visual Studio cache files
+# files ending in .cache can be ignored
+*.[Cc]ache
+# but keep track of directories ending in .cache
+!*.[Cc]ache/
